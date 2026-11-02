@@ -1,0 +1,10 @@
+dataretrieval
+fastapi
+httpx
+pandas
+pytest
+requests
+scikit-learn
+streamlit
+uvicorn
+xgboost
