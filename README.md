@@ -13,13 +13,11 @@ manual action.
 
 > The free hosting tiers go to sleep when idle: the first request can take 30-60 seconds.
 
-<!-- Add a demo once docs/demo.gif exists: ![Dashboard demo](docs/demo.gif) -->
-
 ## Features
 
 - **Daily automated pipeline**: a scheduled GitHub Actions workflow fetches new USGS data and commits it to the repository.
 - **Seasonal anomaly and drought status**: the 7-day mean flow is compared with the history of the same station and season (2000 onwards). Its percentile gives a status from D0 to D4 (low flow) or HIGH (high flow).
-- **1-day-ahead forecast**: XGBoost model with an 80% prediction interval (10% / 90% quantile models).
+- **1-day-ahead forecast (experimental)**: XGBoost model with an 80% prediction interval (10% / 90% quantile models). It does not currently beat the persistence baseline, see *Model performance*.
 - **REST API** (FastAPI) with interactive documentation.
 - **Dashboard** (Streamlit) with a per-basin view and a map.
 - **Automated tests** on synthetic data (no Internet required), run by CI on every push.
@@ -40,7 +38,7 @@ There is no database: the CSV committed in Git is the data store. The API reads 
 
 | File | Role |
 |---|---|
-| `pipeline.py` | Daily fetch of USGS data (7-day lookback so a skipped run never leaves a gap) |
+| `pipeline.py` | Daily fetch of USGS data (14-day lookback so a skipped run never leaves a gap) |
 | `main.py` | FastAPI routes |
 | `analysis.py` | Seasonal normal, percentile, drought status, forecast |
 | `dashboard.py` | Streamlit interface |
@@ -65,16 +63,15 @@ Flows are returned in cubic feet per second (cfs); the dashboard converts them t
 
 ## Model performance
 
-Holdout metrics, read from `models/meta.json`:
+Time-based holdout: 21,860 station-days from 2023-10-11 onwards, 20 stations. Metrics are pooled across stations.
 
-| Metric | Value |
-|---|---|
-| NSE, XGBoost model | _to fill_ |
-| NSE, persistence baseline (tomorrow = today) | _to fill_ |
-| Coverage of the 80% interval | _to fill_ |
+| Metric | XGBoost | Persistence (tomorrow = today) |
+|---|---|---|
+| NSE | 0.48 | 0.62 |
+| RMSE (cfs) | 823 | 707 |
+| Coverage of the 80% interval | 89.3% | n/a |
 
-Persistence is a very strong baseline for 1-day-ahead streamflow, so the model should be judged against it,
-not against zero.
+**Reading these results honestly:** on this holdout the XGBoost point forecast does not beat the persistence baseline, which is very strong for 1-day-ahead streamflow. The prediction interval is conservative (89% observed coverage for an 80% target). Pooled metrics are dominated by large-flow stations and extreme events; per-station scores are not reported yet. The forecast is therefore an experimental component, and the drought status (which does not depend on it) is the main indicator of the dashboard.
 
 ## Getting started
 
@@ -192,8 +189,7 @@ The tests use synthetic data and do not need Internet access.
 
 ## Data source
 
-Streamflow data: [USGS National Water Information System](https://waterdata.usgs.gov/), retrieved with the
-[`dataretrieval`](https://github.com/DOI-USGS/dataretrieval-python) package. USGS data are public domain.
+Streamflow data: [USGS National Water Information System](https://waterdata.usgs.gov/), retrieved with the [`dataretrieval`](https://github.com/DOI-USGS/dataretrieval-python) package (`waterdata` API). USGS data are public domain.
 
 ## Related projects
 
@@ -202,4 +198,4 @@ Streamflow data: [USGS National Water Information System](https://waterdata.usgs
 
 ## License
 
-Released under the MIT License. Add a `LICENSE` file at the root of the repository (GitHub can generate it: *Add file > Create new file > name it `LICENSE` > Choose a license template*).
+Released under the MIT License, see [LICENSE](LICENSE).
