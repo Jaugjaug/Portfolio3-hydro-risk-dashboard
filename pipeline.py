@@ -6,34 +6,39 @@ from datetime import date, timedelta
 from pathlib import Path
 
 import pandas as pd
-from dataretrieval import nwis
+from dataretrieval import waterdata
 
 from config import STATIONS
 
 DATA_FILE = Path("data/observations.csv")
 COLUMNS = ["station_id", "date", "streamflow"]
 PARAM_CD = "00060"      # discharge, cubic feet per second
+STAT_MEAN = "00003"     # USGS statistic code for daily mean
 LOOKBACK_DAYS = 14      # re-fetch two weeks so a skipped run never leaves a gap
 
 
-def find_flow_column(df):
-    """Return the daily-mean discharge column (e.g. '00060_Mean'), ignoring '*_cd' flags."""
-    candidates = [c for c in df.columns if str(c).startswith(PARAM_CD) and not str(c).endswith("_cd")]
-    return candidates[0] if candidates else None
-
-
 def fetch_station(site, start, end):
-    df, _ = nwis.get_dv(sites=site, start=str(start), end=str(end), parameterCd=PARAM_CD)
-    if df.empty:
+    df, _ = waterdata.get_daily(
+        monitoring_location_id=f"USGS-{site}",
+        parameter_code=PARAM_CD,
+        time=f"{start}/{end}",
+    )
+    if df is None or len(df) == 0:
         return []
-    col = find_flow_column(df)
-    if col is None:
-        raise ValueError(f"No discharge column in {list(df.columns)}")
-    idx = df.index.get_level_values("datetime") if "datetime" in df.index.names else df.index
-    dates = pd.to_datetime(idx).strftime("%Y-%m-%d")
+
+    # Keep daily means only (the service can also return min/max series)
+    if "statistic_id" in df.columns:
+        df = df[df["statistic_id"].astype(str) == STAT_MEAN]
+
+    missing = {"time", "value"} - set(df.columns)
+    if missing:
+        raise ValueError(f"Unexpected columns, missing {missing}: {list(df.columns)}")
+
+    dates = pd.to_datetime(df["time"]).dt.strftime("%Y-%m-%d")
+    values = pd.to_numeric(df["value"], errors="coerce")
     return [
         {"station_id": site, "date": d, "streamflow": float(v)}
-        for d, v in zip(dates, df[col])
+        for d, v in zip(dates, values)
         if pd.notna(v)
     ]
 
