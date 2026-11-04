@@ -12,7 +12,7 @@ manual action.
 **[Live dashboard](https://portfolio3-hydro-risk-api.streamlit.app/)** | **[API documentation](https://portfolio3-hydro-risk-api.onrender.com/docs)**
 
 <p align="center">
-  <img src="docs/dashboard-overview.png" width="48%" alt="Overview map of the 20 basins">
+  <img src="docs/dashboard-map.png" width="48%" alt="Overview map of the 20 basins">
   <img src="docs/dashboard-basin.png" width="48%" alt="Basin detail with anomaly, drought status and forecast">
 </p>
 
